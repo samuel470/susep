@@ -1,0 +1,62 @@
+import requests
+import pandas as pd
+
+def extract_susep_data_to_excel(url: str, output_filename: str = "susep_produtos_unique.xlsx", verify_ssl: bool = True):
+    """
+    Acessa uma URL, extrai 'entnome' e 'cnpj' de dados JSON,
+    remove duplicidades e salva em um arquivo Excel.
+
+    Args:
+        url (str): A URL do endpoint JSON.
+        output_filename (str): O nome do arquivo Excel a ser gerado.
+        verify_ssl (bool): Whether to verify SSL certificates. Defaults to True.
+    """
+    try:
+        # 1. Acessar a URL e obter os dados JSON
+        print(f"Tentando acessar a URL: {url}")
+        response = requests.get(url, verify=verify_ssl)
+        response.raise_for_status()  # Levanta um erro para status de resposta HTTP ruins (4xx ou 5xx)
+        data = response.json()
+        print("Dados JSON obtidos com sucesso.")
+
+        # 2. Extrair 'entnome' e 'cnpj'
+        products = data.get('value', [])
+        extracted_data = []
+        for item in products:
+            entnome = item.get('entnome')
+            cnpj = item.get('cnpj')
+            if entnome and cnpj:
+                extracted_data.append({'entnome': entnome, 'cnpj': cnpj})
+
+        # 3. Criar um DataFrame Pandas
+        df = pd.DataFrame(extracted_data)
+
+        # 4. Remover duplicidades com base em 'entnome' e 'cnpj'
+        df_unique = df.drop_duplicates(subset=['entnome', 'cnpj']).reset_index(drop=True)
+        print(f"Total de registros extraídos: {len(df)}")
+        print(f"Total de registros únicos (entnome, cnpj): {len(df_unique)}")
+
+        # 5. Salvar o DataFrame único em um arquivo Excel
+        df_unique.to_excel(output_filename, index=False)
+        print(f"Dados únicos de 'entnome' e 'cnpj' salvos com sucesso em '{output_filename}' ✨")
+
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Erro de conexão ou HTTP ao acessar a URL: {e}")
+        print("Por favor, verifique sua conexão com a internet ou se a URL está correta e acessível.")
+    except ValueError as e:
+        print(f"❌ Erro ao decodificar os dados JSON: {e}")
+        print("O conteúdo da URL pode não ser um JSON válido ou estar vazio.")
+    except Exception as e:
+        print(f"❌ Ocorreu um erro inesperado: {e}")
+
+url_to_access = "https://dados.susep.gov.br/olinda/servico/produtos/versao/v1/odata/DadosProdutos?$format=json"
+
+# Chamar a função para executar o processo
+if __name__ == "__main__":
+    extract_susep_data_to_excel(url_to_access, verify_ssl=False)
+
+
+
+
+
+
